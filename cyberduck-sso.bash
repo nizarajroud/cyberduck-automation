@@ -9,7 +9,7 @@ source /home/nizar/workspace/PROC/xxxxuseful-scripts/common-functions.bash
 
 PROFILE="${1:-csna-operations-sso}"
 CYBERDUCK_PROFILE="cyberduck-sso"
-WIN_AWS_DIR="/mnt/c/Users/nizar/.aws"
+WIN_AWS_DIR="/mnt/c/Users/NizarAjroud/.aws"
 WIN_CREDENTIALS="${WIN_AWS_DIR}/credentials"
 
 echo "=== Cyberduck SSO Connector ==="
