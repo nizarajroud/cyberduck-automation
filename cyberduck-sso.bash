@@ -5,11 +5,22 @@
 
 set -e
 
+ENV_FILE="$(dirname "$0")/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "ERROR: Missing .env file at ${ENV_FILE}. Please create it with WIN_AWS_DIR defined."
+    exit 1
+fi
+source "$ENV_FILE"
+
+if [ -z "$WIN_AWS_DIR" ]; then
+    echo "ERROR: WIN_AWS_DIR is not set in ${ENV_FILE}."
+    exit 1
+fi
+
 source /home/nizar/workspace/PROC/xxxxuseful-scripts/common-functions.bash
 
 PROFILE="${1:-csna-operations-sso}"
 CYBERDUCK_PROFILE="cyberduck-sso"
-WIN_AWS_DIR="/mnt/c/Users/NizarAjroud/.aws"
 WIN_CREDENTIALS="${WIN_AWS_DIR}/credentials"
 
 echo "=== Cyberduck SSO Connector ==="
