@@ -1,6 +1,7 @@
 # cyberduck-automation
 ./cyberduck-sso.bash
 #update the path if required 
+mkdir Profiles
 curl -sL "https://profiles.cyberduck.io/S3%20(Credentials%20from%20AWS%20Command%20Line%20Interface).cyberduckprofile" -o "/mnt/c/Users/nizar/AppData/Roaming/Cyberduck/Profiles/S3 (Credentials from AWS Command Line Interface).cyberduckprofile" && echo "Downloaded OK"
 
 
