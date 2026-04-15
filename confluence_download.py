@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import requests
 import urllib3
@@ -29,7 +30,24 @@ if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
 
 
-def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
+def extract_title(content: bytes) -> str:
+    """Extrait le premier texte en gras du document (HTML déguisé en .doc)."""
+    soup = BeautifulSoup(content, "html.parser")
+    bold = soup.find(["b", "strong"]) or soup.find("p", style=lambda s: s and "bold" in s)
+    if bold:
+        return bold.get_text(strip=True)
+    title = soup.find("title")
+    return title.get_text(strip=True) if title else ""
+
+
+def safe_filename(title: str, page_id: str) -> str:
+    """Construit un nom de fichier propre : titre - id.doc"""
+    clean = "".join(c if c.isalnum() or c in " -_" else " " for c in title).strip()
+    clean = " ".join(clean.split())  # collapse spaces
+    return f"{clean} - {page_id}.doc" if clean else f"{page_id}.doc"
+
+
+(local_path: Path, s3_bucket: str, s3_key: str):
     s3_url = f"s3://{s3_bucket}/{s3_key}"
     print(f"[→] Upload vers S3 : {local_path.name} → {s3_url}")
 
@@ -58,22 +76,21 @@ def main():
     session.headers.update({"User-Agent": "Mozilla/5.0"})
 
     print(f"[→] Téléchargement : {url}")
-    resp = session.get(url, timeout=30, stream=True)
+    resp = session.get(url, timeout=30)
 
     if resp.status_code == 401:
         sys.exit("[✗] 401 : JSESSIONID invalide ou expiré")
     if not resp.ok:
         sys.exit(f"[✗] Erreur HTTP {resp.status_code}")
 
-    filename = f"{args.page_id}.doc"
+    title = extract_title(resp.content)
+    filename = safe_filename(title, args.page_id)
     output_path = Path(args.output_dir) / filename
-    with open(output_path, "wb") as f:
-        for chunk in resp.iter_content(8192):
-            f.write(chunk)
+    output_path.write_bytes(resp.content)
     print(f"[✓] Sauvegardé : {output_path}")
 
     if args.s3_bucket:
-        s3_key = f"{S3_PREFIX.rstrip('/')}/{args.page_id}.doc"
+        s3_key = f"{S3_PREFIX.rstrip('/')}/{filename}"
         upload_to_s3(output_path, args.s3_bucket, s3_key)
 
 
