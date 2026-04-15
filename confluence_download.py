@@ -41,10 +41,10 @@ def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str):
         cmd = ["duck", "--username", aws_key, "--password", aws_secret] + cmd[1:]
 
     try:
-        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         print(f"[✓] Upload réussi : {local_path.name}")
     except subprocess.CalledProcessError as e:
-        sys.exit(f"[✗] Erreur duck : {e.stderr}")
+        sys.exit(f"[✗] Erreur duck (exit {e.returncode}):\n  stdout: {e.stdout}\n  stderr: {e.stderr}")
     except FileNotFoundError:
         sys.exit("[✗] 'duck' introuvable. Installe Cyberduck CLI : sudo apt-get install duck")
 
