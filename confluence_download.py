@@ -5,6 +5,7 @@ Usage:
     python confluence_download.py --page-id 9389103 --s3-bucket mon-bucket
 """
 
+import argparse
 import re
 import os
 import subprocess
