@@ -55,18 +55,22 @@ echo "  Access Key: ${ACCESS_KEY:0:8}..."
 echo "[3/3] Writing credentials to Windows AWS credentials file..."
 mkdir -p "$WIN_AWS_DIR"
 
-# Remove existing cyberduck-sso profile block if present, then append new one
-if [ -f "$WIN_CREDENTIALS" ]; then
-    sed -i "/^\[${CYBERDUCK_PROFILE}\]/,/^\[/{ /^\[${CYBERDUCK_PROFILE}\]/d; /^\[/!d; }" "$WIN_CREDENTIALS"
-fi
-
-cat >> "$WIN_CREDENTIALS" <<EOF
+write_credentials() {
+    local creds_file="$1"
+    if [ -f "$creds_file" ]; then
+        sed -i "/^\[${CYBERDUCK_PROFILE}\]/,/^\[/{ /^\[${CYBERDUCK_PROFILE}\]/d; /^\[/!d; }" "$creds_file"
+    fi
+    cat >> "$creds_file" <<EOF
 [${CYBERDUCK_PROFILE}]
 aws_access_key_id=${ACCESS_KEY}
 aws_secret_access_key=${SECRET_KEY}
 aws_session_token=${SESSION_TOKEN}
 region=${AWS_DEFAULT_REGION:-ca-central-1}
 EOF
+}
+
+write_credentials "$WIN_CREDENTIALS"
+write_credentials "$HOME/.aws/credentials"
 
 echo ""
 echo "=== Done! ==="
