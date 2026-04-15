@@ -62,12 +62,21 @@ def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
         sys.exit("[✗] 'aws' CLI introuvable.")
 
 
+def ensure_aws_session():
+    script = Path(__file__).parent / "cyberduck-sso.bash"
+    if not script.exists():
+        sys.exit(f"[✗] cyberduck-sso.bash introuvable : {script}")
+    subprocess.run(["bash", str(script)], check=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("page_id", help="ID de la page Confluence")
     parser.add_argument("--s3-bucket", default=S3_BUCKET or None, help="Nom du bucket S3 (optionnel)")
     parser.add_argument("--output-dir", default=CONFLUENCE_DOWNLOAD_DIR, help="Dossier de destination")
     args = parser.parse_args()
+
+    ensure_aws_session()
 
     url = f"{CONFLUENCE_BASE_URL}/{CONFLUENCE_EXPORT_PATH}?pageId={args.page_id}"
     session = requests.Session()
