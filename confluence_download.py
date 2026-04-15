@@ -21,7 +21,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 JSESSIONID             = os.environ.get("JSESSIONID", "")
 CONFLUENCE_BASE_URL    = os.environ.get("CONFLUENCE_BASE_URL", "")
 CONFLUENCE_EXPORT_PATH = os.environ.get("CONFLUENCE_EXPORT_PATH", "exportword")
+S3_BUCKET              = os.environ.get("S3_BUCKET", "")
 S3_PREFIX              = os.environ.get("S3_PREFIX", "confluence/")
+CONFLUENCE_DOWNLOAD_DIR = os.environ.get("CONFLUENCE_DOWNLOAD_DIR", ".")
 
 if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
@@ -50,8 +52,8 @@ def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--page-id", required=True, help="ID de la page Confluence")
-    parser.add_argument("--s3-bucket", default=None, help="Nom du bucket S3 (optionnel)")
-    parser.add_argument("--output-dir", default=".", help="Dossier de destination")
+    parser.add_argument("--s3-bucket", default=S3_BUCKET or None, help="Nom du bucket S3 (optionnel)")
+    parser.add_argument("--output-dir", default=CONFLUENCE_DOWNLOAD_DIR, help="Dossier de destination")
     args = parser.parse_args()
 
     url = f"{CONFLUENCE_BASE_URL}/{CONFLUENCE_EXPORT_PATH}?pageId={args.page_id}"
