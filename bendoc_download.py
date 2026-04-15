@@ -97,7 +97,7 @@ def handle_backstage(url: str, s3_bucket: str | None):
     filename = doc_path.replace("/", "-")  # ex: maintainers-onboarding-webproxy.md
 
     print(f"[→] Téléchargement Backstage : {full_url}")
-    resp = requests.get(full_url, timeout=30)
+    resp = requests.get(full_url, timeout=30, verify=False)
     if not resp.ok:
         sys.exit(f"[✗] Erreur HTTP {resp.status_code} : {full_url}")
 
