@@ -7,10 +7,7 @@ vers un bucket S3 en JSON structuré, avec les images séparées.
 Upload final via Cyberduck CLI (duck).
 
 Usage:
-    python confluence_scraper.py \
-        --url "https://confluence.int.beneva.ca/plugins/viewsource/viewpagesrc.action?pageId=278661148" \
-        --s3-bucket "mon-bucket" \
-        --s3-prefix "confluence/pages/"
+    python confluence_scraper.py --page-id 278661148
 """
 
 import argparse
@@ -24,49 +21,29 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
 
-# ─────────────────────────────────────────────
-# CONFIGURATION — modifie selon ton environnement
-# ─────────────────────────────────────────────
+load_dotenv()
 
-# Méthode d'auth : "cookie", "basic", ou "token"
-AUTH_METHOD = "cookie"
+JSESSIONID       = os.environ.get("JSESSIONID", "")
+CONFLUENCE_BASE_URL = os.environ.get("CONFLUENCE_BASE_URL", "")
+S3_BUCKET        = os.environ.get("S3_BUCKET", "")
+S3_PREFIX        = os.environ.get("S3_PREFIX", "confluence/")
 
-# Option A — Cookie de session (copier depuis DevTools → Application → Cookies)
-SESSION_COOKIE = {
-    "JSESSIONID": "TON_JSESSIONID_ICI",
-    # Ajoute d'autres cookies si nécessaire, ex: "seraph.confluence": "..."
-}
-
-# Option B — Basic Auth (username + password)
-BASIC_AUTH_USER = "ton_username"
-BASIC_AUTH_PASS = "ton_password"
-
-# Option C — Token Confluence Cloud (Bearer token)
-CONFLUENCE_TOKEN = "ton_token_ici"
+if not all([JSESSIONID, CONFLUENCE_BASE_URL, S3_BUCKET]):
+    sys.exit("[✗] Variables manquantes dans .env : JSESSIONID, CONFLUENCE_BASE_URL, S3_BUCKET")
 
 # ─────────────────────────────────────────────
 
 
-def build_session(auth_method: str) -> requests.Session:
-    """Crée une session HTTP avec l'authentification choisie."""
+def build_session() -> requests.Session:
+    """Crée une session HTTP avec authentification par cookie JSESSIONID."""
     session = requests.Session()
-    session.verify = False  # Désactiver si certificat SSL interne non reconnu
-
-    if auth_method == "cookie":
-        session.cookies.update(SESSION_COOKIE)
-    elif auth_method == "basic":
-        session.auth = (BASIC_AUTH_USER, BASIC_AUTH_PASS)
-    elif auth_method == "token":
-        session.headers.update({"Authorization": f"Bearer {CONFLUENCE_TOKEN}"})
-    else:
-        raise ValueError(f"AUTH_METHOD inconnu : {auth_method}")
-
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (confluence-scraper/1.0)"
-    })
+    session.verify = False
+    session.cookies.set("JSESSIONID", JSESSIONID)
+    session.headers.update({"User-Agent": "Mozilla/5.0 (confluence-scraper/1.0)"})
     return session
 
 
@@ -84,19 +61,6 @@ def fetch_page(session: requests.Session, url: str) -> str:
 
     print(f"[✓] Page téléchargée ({len(resp.content)} octets)")
     return resp.text
-
-
-def extract_page_id(url: str) -> str:
-    """Extrait le pageId depuis l'URL."""
-    parsed = urllib.parse.urlparse(url)
-    params = urllib.parse.parse_qs(parsed.query)
-    return params.get("pageId", ["unknown"])[0]
-
-
-def extract_base_url(url: str) -> str:
-    """Extrait l'URL de base (scheme + netloc)."""
-    parsed = urllib.parse.urlparse(url)
-    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def parse_content(html: str, base_url: str, page_id: str) -> dict:
@@ -269,7 +233,7 @@ def save_json(data: dict, output_dir: Path, page_id: str) -> Path:
     return json_path
 
 
-def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str, auth_method: str):
+def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str):
     """
     Upload un fichier (ou dossier) vers S3 via duck CLI.
     duck doit être installé et accessible dans le PATH.
@@ -319,16 +283,13 @@ def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str, auth_method: 
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape Confluence → JSON → S3 via duck")
-    parser.add_argument("--url", required=True, help="URL View Source de la page Confluence")
-    parser.add_argument("--s3-bucket", required=True, help="Nom du bucket S3")
-    parser.add_argument("--s3-prefix", default="confluence/", help="Préfixe/dossier dans le bucket S3")
-    parser.add_argument("--auth", default=AUTH_METHOD, choices=["cookie", "basic", "token"],
-                        help="Méthode d'authentification")
+    parser.add_argument("--page-id", required=True, help="ID de la page Confluence")
     parser.add_argument("--output-dir", default=None, help="Dossier de sortie local (optionnel)")
     parser.add_argument("--no-upload", action="store_true", help="Ne pas uploader vers S3 (debug local)")
     args = parser.parse_args()
 
-    # Dossier de sortie
+    url = f"{CONFLUENCE_BASE_URL}/plugins/viewsource/viewpagesrc.action?pageId={args.page_id}"
+
     if args.output_dir:
         output_dir = Path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -338,48 +299,32 @@ def main():
         output_dir = Path(temp_ctx.name)
 
     try:
-        page_id = extract_page_id(args.url)
-        base_url = extract_base_url(args.url)
-
         print(f"\n{'='*55}")
-        print(f"  Page ID  : {page_id}")
-        print(f"  Base URL : {base_url}")
-        print(f"  Auth     : {args.auth}")
+        print(f"  Page ID  : {args.page_id}")
+        print(f"  Base URL : {CONFLUENCE_BASE_URL}")
         print(f"{'='*55}\n")
 
-        # 1. Session HTTP
-        session = build_session(args.auth)
+        session = build_session()
+        html = fetch_page(session, url)
 
-        # 2. Télécharger la page
-        html = fetch_page(session, args.url)
-
-        # 3. Parser le contenu
         print("[→] Extraction du contenu...")
-        data = parse_content(html, base_url, page_id)
+        data = parse_content(html, CONFLUENCE_BASE_URL, args.page_id)
         print(f"[✓] {len(data['sections'])} sections, {len(data['images'])} images trouvées")
 
-        # 4. Télécharger les images
         if data["images"]:
             print(f"\n[→] Téléchargement de {len(data['images'])} image(s)...")
             data["images"] = download_images(session, data["images"], output_dir)
 
-        # 5. Sauvegarder le JSON
-        json_path = save_json(data, output_dir, page_id)
+        json_path = save_json(data, output_dir, args.page_id)
 
-        # 6. Upload vers S3
         if not args.no_upload:
-            page_prefix = f"{args.s3_prefix.rstrip('/')}/page_{page_id}/"
-
-            # Upload JSON
-            upload_to_s3(json_path, args.s3_bucket, page_prefix, args.auth)
-
-            # Upload images
+            page_prefix = f"{S3_PREFIX.rstrip('/')}/page_{args.page_id}/"
+            upload_to_s3(json_path, S3_BUCKET, page_prefix)
             images_dir = output_dir / "images"
             if images_dir.exists() and any(images_dir.iterdir()):
-                upload_to_s3(images_dir, args.s3_bucket, page_prefix + "images/", args.auth)
+                upload_to_s3(images_dir, S3_BUCKET, page_prefix + "images/")
         else:
             print(f"\n[i] Mode --no-upload : fichiers dans {output_dir}")
-            print(f"    JSON : {json_path}")
 
         print(f"\n{'='*55}")
         print("  ✓ Terminé avec succès!")
