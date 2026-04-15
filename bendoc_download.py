@@ -29,6 +29,7 @@ S3_BUCKET              = os.environ.get("S3_BUCKET", "")
 S3_PREFIX              = os.environ.get("S3_PREFIX", "confluence/")
 CONFLUENCE_DOWNLOAD_DIR = os.environ.get("CONFLUENCE_DOWNLOAD_DIR", ".")
 PATI_DOC_URL           = os.environ.get("PATI_DOC_URL", "")
+PATI_DOC_DIR           = os.environ.get("PATI_DOC_DIR", ".")
 
 if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
@@ -84,16 +85,31 @@ def is_backstage_url(url: str) -> bool:
     return "portail-developpeur" in urlparse(url).netloc
 
 
-def handle_backstage(url: str):
+def handle_backstage(url: str, s3_bucket: str | None):
     m = re.search(r"/documentation/(.+?)/?$", url)
     if not m:
         sys.exit(f"[✗] Impossible d'extraire le chemin après /documentation/ depuis : {url}")
-    doc_path = m.group(1).rstrip("/") + ".md"
     if not PATI_DOC_URL:
         sys.exit("[✗] PATI_DOC_URL manquant dans .env")
+
+    doc_path = m.group(1).rstrip("/") + ".md"
     full_url = PATI_DOC_URL.rstrip("/") + "/" + doc_path
-    print(f"[i] URL Backstage → {full_url}")
-    print("[!] Traitement Backstage non encore implémenté.")
+    filename = doc_path.replace("/", "-")  # ex: maintainers-onboarding-webproxy.md
+
+    print(f"[→] Téléchargement Backstage : {full_url}")
+    resp = requests.get(full_url, timeout=30)
+    if not resp.ok:
+        sys.exit(f"[✗] Erreur HTTP {resp.status_code} : {full_url}")
+
+    output_dir = Path(PATI_DOC_DIR)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / filename
+    output_path.write_bytes(resp.content)
+    print(f"[✓] Sauvegardé : {output_path}")
+
+    if s3_bucket:
+        s3_key = f"{S3_PREFIX.rstrip('/')}/{filename}"
+        upload_to_s3(output_path, s3_bucket, s3_key)
 
 
 def main():
@@ -104,7 +120,7 @@ def main():
     args = parser.parse_args()
 
     if is_backstage_url(args.url):
-        handle_backstage(args.url)
+        handle_backstage(args.url, args.s3_bucket)
         return
 
     page_id = parse_confluence_page_id(args.url)
