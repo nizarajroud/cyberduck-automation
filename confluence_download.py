@@ -5,7 +5,7 @@ Usage:
     python confluence_download.py --page-id 9389103 --s3-bucket mon-bucket
 """
 
-import argparse
+import re
 import os
 import subprocess
 import sys
@@ -29,19 +29,48 @@ if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
 
 
+def get_aws_credentials() -> tuple[str, str, str]:
+    """Lit les credentials du profil cyberduck-sso depuis WIN_AWS_DIR/.aws/credentials."""
+    win_aws_dir = os.environ.get("WIN_AWS_DIR", "")
+    creds_file = Path(win_aws_dir) / "credentials" if win_aws_dir else None
+
+    if not creds_file or not creds_file.exists():
+        return "", "", ""
+
+    content = creds_file.read_text()
+    section = re.search(r"\[cyberduck-sso\](.*?)(?=\[|\Z)", content, re.DOTALL)
+    if not section:
+        return "", "", ""
+
+    def get(key):
+        m = re.search(rf"^{key}\s*=\s*(.+)$", section.group(1), re.MULTILINE)
+        return m.group(1).strip() if m else ""
+
+    return get("aws_access_key_id"), get("aws_secret_access_key"), get("aws_session_token")
+
+
 def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str):
     s3_url = f"s3://{s3_bucket}/{s3_prefix.rstrip('/')}/"
     print(f"[→] Upload vers S3 : {local_path.name} → {s3_url}")
 
-    cmd = ["duck", "--quiet", "--retry", "--existing", "overwrite", "--upload", s3_url, str(local_path)]
+    aws_key, aws_secret, aws_token = get_aws_credentials()
+    if not aws_key:
+        aws_key    = os.environ.get("AWS_ACCESS_KEY_ID", "")
+        aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+        aws_token  = os.environ.get("AWS_SESSION_TOKEN", "")
 
-    aws_key = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    if aws_key and aws_secret:
-        cmd = ["duck", "--username", aws_key, "--password", aws_secret] + cmd[1:]
+    if not aws_key:
+        sys.exit("[✗] Credentials AWS introuvables. Lance cyberduck-sso.bash d'abord.")
+
+    cmd = ["duck", "--username", aws_key, "--password", aws_secret,
+           "--quiet", "--retry", "--existing", "overwrite", "--upload", s3_url, str(local_path)]
+
+    env = os.environ.copy()
+    if aws_token:
+        env["AWS_SESSION_TOKEN"] = aws_token
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
         print(f"[✓] Upload réussi : {local_path.name}")
     except subprocess.CalledProcessError as e:
         sys.exit(f"[✗] Erreur duck (exit {e.returncode}):\n  stdout: {e.stdout}\n  stderr: {e.stderr}")
