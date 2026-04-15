@@ -26,7 +26,8 @@ JSESSIONID             = os.environ.get("JSESSIONID", "")
 CONFLUENCE_BASE_URL    = os.environ.get("CONFLUENCE_BASE_URL", "")
 CONFLUENCE_EXPORT_PATH = os.environ.get("CONFLUENCE_EXPORT_PATH", "exportword")
 S3_BUCKET              = os.environ.get("S3_BUCKET", "")
-S3_PREFIX              = os.environ.get("S3_PREFIX", "confluence/")
+S3_PREFIX_CONFLUENCE   = os.environ.get("S3_PREFIX_CONFLUENCE", "confluence/")
+S3_PREFIX_PATI         = os.environ.get("S3_PREFIX_PATI", "pati/")
 CONFLUENCE_DOWNLOAD_DIR = os.environ.get("CONFLUENCE_DOWNLOAD_DIR", ".")
 PATI_DOC_URL           = os.environ.get("PATI_DOC_URL", "")
 PATI_DOC_DIR           = os.environ.get("PATI_DOC_DIR", ".")
@@ -110,7 +111,7 @@ def handle_backstage(url: str, s3_bucket: str | None):
     print(f"[✓] Sauvegardé : {output_path}")
 
     if s3_bucket:
-        s3_key = f"{S3_PREFIX.rstrip('/')}/{filename}"
+        s3_key = f"{S3_PREFIX_PATI.rstrip('/')}/{filename}"
         upload_to_s3(output_path, s3_bucket, s3_key)
 
 
@@ -152,7 +153,7 @@ def main():
     print(f"[✓] Sauvegardé : {output_path}")
 
     if args.s3_bucket:
-        s3_key = f"{S3_PREFIX.rstrip('/')}/{filename}"
+        s3_key = f"{S3_PREFIX_CONFLUENCE.rstrip('/')}/{filename}"
         upload_to_s3(output_path, args.s3_bucket, s3_key)
 
 
