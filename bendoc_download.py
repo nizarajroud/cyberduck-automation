@@ -30,6 +30,7 @@ S3_PREFIX              = os.environ.get("S3_PREFIX", "confluence/")
 CONFLUENCE_DOWNLOAD_DIR = os.environ.get("CONFLUENCE_DOWNLOAD_DIR", ".")
 PATI_DOC_URL           = os.environ.get("PATI_DOC_URL", "")
 PATI_DOC_DIR           = os.environ.get("PATI_DOC_DIR", ".")
+GITHUB_TOKEN           = os.environ.get("GITHUB_TOKEN", "")
 
 if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
@@ -97,7 +98,8 @@ def handle_backstage(url: str, s3_bucket: str | None):
     filename = doc_path.replace("/", "-")  # ex: maintainers-onboarding-webproxy.md
 
     print(f"[→] Téléchargement Backstage : {full_url}")
-    resp = requests.get(full_url, timeout=30, verify=False)
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
+    resp = requests.get(full_url, timeout=30, verify=False, headers=headers)
     if not resp.ok:
         sys.exit(f"[✗] Erreur HTTP {resp.status_code} : {full_url}")
 
