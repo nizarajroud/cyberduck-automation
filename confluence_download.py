@@ -11,7 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import requests
 import urllib3
@@ -31,20 +30,21 @@ if not JSESSIONID or not CONFLUENCE_BASE_URL:
 
 
 def extract_title(content: bytes) -> str:
-    """Extrait le premier texte en gras du document (HTML déguisé en .doc)."""
-    soup = BeautifulSoup(content, "html.parser")
-    bold = soup.find(["b", "strong"]) or soup.find("p", style=lambda s: s and "bold" in s)
-    if bold:
-        return bold.get_text(strip=True)
-    title = soup.find("title")
-    return title.get_text(strip=True) if title else ""
+    """Extrait le titre depuis le fichier MIME/HTML exporté par Confluence."""
+    import quopri, re
+    # Decode quoted-printable
+    try:
+        decoded = quopri.decodestring(content).decode("utf-8", errors="replace")
+    except Exception:
+        decoded = content.decode("utf-8", errors="replace")
+    m = re.search(r"<title>(.*?)</title>", decoded, re.IGNORECASE | re.DOTALL)
+    return m.group(1).strip() if m else ""
 
 
 def safe_filename(title: str, page_id: str) -> str:
-    """Construit un nom de fichier propre : titre - id.doc"""
     clean = "".join(c if c.isalnum() or c in " -_" else " " for c in title).strip()
-    clean = " ".join(clean.split())  # collapse spaces
-    return f"{clean} - {page_id}.doc" if clean else f"{page_id}.doc"
+    clean = " ".join(clean.split())[:50].strip()
+    return f"{clean}-{page_id}.doc" if clean else f"{page_id}.doc"
 
 
 def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
