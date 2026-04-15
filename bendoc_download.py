@@ -124,9 +124,12 @@ def main():
     args = parser.parse_args()
 
     if not args.url:
-        args.url = input("URL (Confluence ou Backstage) : ").strip()
+        try:
+            args.url = input("URL (Confluence ou Backstage) : ").strip()
+        except (KeyboardInterrupt, EOFError):
+            sys.exit(0)
     if not args.url:
-        sys.exit("[✗] URL requise.")
+        sys.exit(0)
 
     if is_backstage_url(args.url):
         handle_backstage(args.url, args.s3_bucket)
