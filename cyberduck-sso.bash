@@ -17,7 +17,11 @@ if [ -z "$WIN_AWS_DIR" ]; then
     exit 1
 fi
 
-source /home/nizar/workspace/PROC/xxxxuseful-scripts/common-functions.bash
+if [ -z "$COMMON_FUNCTIONS" ] || [ ! -f "$COMMON_FUNCTIONS" ]; then
+    echo "ERROR: COMMON_FUNCTIONS not set or file not found: ${COMMON_FUNCTIONS}"
+    exit 1
+fi
+source "$COMMON_FUNCTIONS"
 
 PROFILE="${1:-csna-operations-sso}"
 CYBERDUCK_PROFILE="cyberduck-sso"
