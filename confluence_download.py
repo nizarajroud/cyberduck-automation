@@ -14,6 +14,9 @@ import requests
 
 load_dotenv()
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 JSESSIONID          = os.environ.get("JSESSIONID", "")
 CONFLUENCE_BASE_URL = os.environ.get("CONFLUENCE_BASE_URL", "")
 CONFLUENCE_EXPORT_PATH = os.environ.get("CONFLUENCE_EXPORT_PATH", "exportword")
