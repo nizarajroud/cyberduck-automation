@@ -107,7 +107,8 @@ def handle_backstage(url: str, s3_bucket: str | None):
     output_dir = Path(PATI_DOC_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / filename
-    output_path.write_bytes(resp.content)
+    content = f"<!-- source: {url} -->\n\n".encode() + resp.content
+    output_path.write_bytes(content)
     print(f"[✓] Sauvegardé : {output_path}")
 
     if s3_bucket:
