@@ -118,10 +118,15 @@ def handle_backstage(url: str, s3_bucket: str | None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("url", help="URL Confluence ou Backstage")
+    parser.add_argument("url", nargs="?", help="URL Confluence ou Backstage")
     parser.add_argument("--s3-bucket", default=S3_BUCKET or None, help="Nom du bucket S3 (optionnel)")
     parser.add_argument("--output-dir", default=CONFLUENCE_DOWNLOAD_DIR, help="Dossier de destination")
     args = parser.parse_args()
+
+    if not args.url:
+        args.url = input("URL (Confluence ou Backstage) : ").strip()
+    if not args.url:
+        sys.exit("[✗] URL requise.")
 
     if is_backstage_url(args.url):
         handle_backstage(args.url, args.s3_bucket)
