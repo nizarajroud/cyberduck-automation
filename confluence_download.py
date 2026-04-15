@@ -47,7 +47,7 @@ def safe_filename(title: str, page_id: str) -> str:
     return f"{clean} - {page_id}.doc" if clean else f"{page_id}.doc"
 
 
-(local_path: Path, s3_bucket: str, s3_key: str):
+def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
     s3_url = f"s3://{s3_bucket}/{s3_key}"
     print(f"[→] Upload vers S3 : {local_path.name} → {s3_url}")
 
