@@ -46,13 +46,12 @@ def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--page-id", required=True, help="ID de la page Confluence")
+    parser.add_argument("page_id", help="ID de la page Confluence")
     parser.add_argument("--s3-bucket", default=S3_BUCKET or None, help="Nom du bucket S3 (optionnel)")
     parser.add_argument("--output-dir", default=CONFLUENCE_DOWNLOAD_DIR, help="Dossier de destination")
     args = parser.parse_args()
 
     url = f"{CONFLUENCE_BASE_URL}/{CONFLUENCE_EXPORT_PATH}?pageId={args.page_id}"
-
     session = requests.Session()
     session.verify = False
     session.cookies.set("JSESSIONID", JSESSIONID)
@@ -66,10 +65,7 @@ def main():
     if not resp.ok:
         sys.exit(f"[✗] Erreur HTTP {resp.status_code}")
 
-    cd = resp.headers.get("Content-Disposition", "")
-    filename = cd.split("filename=")[-1].strip().strip('"') if "filename=" in cd \
-        else f"confluence_page_{args.page_id}.doc"
-
+    filename = f"{args.page_id}.doc"
     output_path = Path(args.output_dir) / filename
     with open(output_path, "wb") as f:
         for chunk in resp.iter_content(8192):
