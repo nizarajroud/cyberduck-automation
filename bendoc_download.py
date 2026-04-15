@@ -28,6 +28,7 @@ CONFLUENCE_EXPORT_PATH = os.environ.get("CONFLUENCE_EXPORT_PATH", "exportword")
 S3_BUCKET              = os.environ.get("S3_BUCKET", "")
 S3_PREFIX              = os.environ.get("S3_PREFIX", "confluence/")
 CONFLUENCE_DOWNLOAD_DIR = os.environ.get("CONFLUENCE_DOWNLOAD_DIR", ".")
+PATI_DOC_URL           = os.environ.get("PATI_DOC_URL", "")
 
 if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
@@ -84,7 +85,14 @@ def is_backstage_url(url: str) -> bool:
 
 
 def handle_backstage(url: str):
-    print(f"[i] URL Backstage détectée : {url}")
+    m = re.search(r"/documentation/(.+?)/?$", url)
+    if not m:
+        sys.exit(f"[✗] Impossible d'extraire le chemin après /documentation/ depuis : {url}")
+    doc_path = m.group(1).rstrip("/") + ".md"
+    if not PATI_DOC_URL:
+        sys.exit("[✗] PATI_DOC_URL manquant dans .env")
+    full_url = PATI_DOC_URL.rstrip("/") + "/" + doc_path
+    print(f"[i] URL Backstage → {full_url}")
     print("[!] Traitement Backstage non encore implémenté.")
 
 
