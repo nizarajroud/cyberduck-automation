@@ -44,7 +44,7 @@ def extract_title(content: bytes) -> str:
 def safe_filename(title: str, page_id: str) -> str:
     clean = "".join(c if c.isalnum() or c in " -_" else " " for c in title).strip()
     clean = " ".join(clean.split())[:50].strip()
-    return f"{clean}-{page_id}.doc" if clean else f"{page_id}.doc"
+    return f"{page_id}-{clean}.doc" if clean else f"{page_id}.doc"
 
 
 def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
