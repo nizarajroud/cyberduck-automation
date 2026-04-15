@@ -29,8 +29,8 @@ if not JSESSIONID or not CONFLUENCE_BASE_URL:
     sys.exit("[✗] JSESSIONID ou CONFLUENCE_BASE_URL manquant dans .env")
 
 
-def upload_to_s3(local_path: Path, s3_bucket: str, s3_prefix: str):
-    s3_url = f"s3://{s3_bucket}/{s3_prefix.rstrip('/')}/"
+def upload_to_s3(local_path: Path, s3_bucket: str, s3_key: str):
+    s3_url = f"s3://{s3_bucket}/{s3_key}"
     print(f"[→] Upload vers S3 : {local_path.name} → {s3_url}")
 
     cmd = ["aws", "s3", "cp", str(local_path), s3_url, "--profile", "cyberduck-sso"]
@@ -77,7 +77,8 @@ def main():
     print(f"[✓] Sauvegardé : {output_path}")
 
     if args.s3_bucket:
-        upload_to_s3(output_path, args.s3_bucket, f"{S3_PREFIX.rstrip('/')}/page_{args.page_id}/")
+        s3_key = f"{S3_PREFIX.rstrip('/')}/{args.page_id}.doc"
+        upload_to_s3(output_path, args.s3_bucket, s3_key)
 
 
 if __name__ == "__main__":

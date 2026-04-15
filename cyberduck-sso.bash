@@ -26,6 +26,15 @@ WIN_CREDENTIALS="${WIN_AWS_DIR}/credentials"
 echo "=== Cyberduck SSO Connector ==="
 echo ""
 
+# Check if cyberduck-sso credentials are still valid
+if aws sts get-caller-identity --profile "$CYBERDUCK_PROFILE" &>/dev/null; then
+    echo "[✓] Credentials '${CYBERDUCK_PROFILE}' are still valid — nothing to do."
+    exit 0
+fi
+
+echo "[!] Credentials expired or missing — renewing..."
+echo ""
+
 # Step 1: Switch to profile via acp
 echo "[1/3] Switching to AWS profile via acp..."
 acp "$PROFILE"
