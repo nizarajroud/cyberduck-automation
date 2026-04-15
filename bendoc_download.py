@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
 Usage:
-    python confluence_download.py --page-id 9389103
-    python confluence_download.py --page-id 9389103 --s3-bucket mon-bucket
+    python bendoc_download.py <url>
+
+    Confluence : https://confluence.int.beneva.ca/spaces/.../pages/567083024/...
+    Backstage  : https://portail-developpeur.pati.int.beneva.ca/catalog/...
 """
 
 import argparse
 import os
+import re
+from urllib.parse import urlparse
 import subprocess
 import sys
 from pathlib import Path
@@ -69,16 +73,39 @@ def ensure_aws_session():
     subprocess.run(["bash", str(script)], check=True)
 
 
+def parse_confluence_page_id(url: str) -> str | None:
+    """Extrait le page ID depuis une URL Confluence standard."""
+    m = re.search(r"/pages/(\d+)", url)
+    return m.group(1) if m else None
+
+
+def is_backstage_url(url: str) -> bool:
+    return "portail-developpeur" in urlparse(url).netloc
+
+
+def handle_backstage(url: str):
+    print(f"[i] URL Backstage détectée : {url}")
+    print("[!] Traitement Backstage non encore implémenté.")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("page_id", help="ID de la page Confluence")
+    parser.add_argument("url", help="URL Confluence ou Backstage")
     parser.add_argument("--s3-bucket", default=S3_BUCKET or None, help="Nom du bucket S3 (optionnel)")
     parser.add_argument("--output-dir", default=CONFLUENCE_DOWNLOAD_DIR, help="Dossier de destination")
     args = parser.parse_args()
 
+    if is_backstage_url(args.url):
+        handle_backstage(args.url)
+        return
+
+    page_id = parse_confluence_page_id(args.url)
+    if not page_id:
+        sys.exit(f"[✗] Impossible d'extraire le page ID depuis : {args.url}")
+
     ensure_aws_session()
 
-    url = f"{CONFLUENCE_BASE_URL}/{CONFLUENCE_EXPORT_PATH}?pageId={args.page_id}"
+    url = f"{CONFLUENCE_BASE_URL}/{CONFLUENCE_EXPORT_PATH}?pageId={page_id}"
     session = requests.Session()
     session.verify = False
     session.cookies.set("JSESSIONID", JSESSIONID)
@@ -93,7 +120,7 @@ def main():
         sys.exit(f"[✗] Erreur HTTP {resp.status_code}")
 
     title = extract_title(resp.content)
-    filename = safe_filename(title, args.page_id)
+    filename = safe_filename(title, page_id)
     output_path = Path(args.output_dir) / filename
     output_path.write_bytes(resp.content)
     print(f"[✓] Sauvegardé : {output_path}")
