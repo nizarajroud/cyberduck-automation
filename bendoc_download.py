@@ -148,7 +148,7 @@ def main():
     session.headers.update({"User-Agent": "Mozilla/5.0"})
 
     print(f"[→] Téléchargement : {url}")
-    resp = session.get(url, timeout=30)
+    resp = session.get(url, timeout=30, verify=False)
 
     if resp.status_code == 401:
         sys.exit("[✗] 401 : JSESSIONID invalide ou expiré")
