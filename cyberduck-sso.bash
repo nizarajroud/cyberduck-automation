@@ -3,7 +3,7 @@
 # Cyberduck must use the "S3 (Credentials from AWS Command Line Interface)" profile
 # pointing to the profile name "cyberduck-sso" in Windows %USERPROFILE%\.aws\credentials
 
-set -e
+# set -e
 
 ENV_FILE="$(dirname "$0")/.env"
 if [ ! -f "$ENV_FILE" ]; then
@@ -23,7 +23,7 @@ if [ -z "$COMMON_FUNCTIONS" ] || [ ! -f "$COMMON_FUNCTIONS" ]; then
 fi
 source "$COMMON_FUNCTIONS"
 
-PROFILE="${1:-csna-operations-sso}"
+PROFILE="${1:-csna-operations-sso-828}"
 CYBERDUCK_PROFILE="cyberduck-sso"
 WIN_CREDENTIALS="${WIN_AWS_DIR}/credentials"
 
