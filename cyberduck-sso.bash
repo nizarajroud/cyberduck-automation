@@ -5,6 +5,20 @@
 
 # set -e
 
+# --- WSL Interop Check ---
+# CyberDuck runs on Windows, so we need cmd.exe access to resolve the Windows username.
+# On some WSL instances, interop is disabled by default.
+if [[ ! -f /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
+    echo "⚠️  WSL Interop désactivé. Activation..."
+    sudo sh -c 'echo :WSLInterop:M::MZ::/init:PF > /proc/sys/fs/binfmt_misc/register' 2>/dev/null
+    if [[ ! -f /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
+        echo "❌ Impossible d'activer l'interop Windows."
+        echo "   Relance WSL avec: wsl --shutdown (depuis PowerShell) puis relance."
+        exit 1
+    fi
+    echo "✅ Interop activé"
+fi
+
 ENV_FILE="$(dirname "$0")/.env"
 if [ ! -f "$ENV_FILE" ]; then
     echo "ERROR: Missing .env file at ${ENV_FILE}. Please create it with WIN_AWS_DIR defined."
